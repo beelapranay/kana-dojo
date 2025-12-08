@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useChallengeTimer } from '@/shared/hooks/useTimer';
 import { useGoalTimers } from '@/shared/hooks/useGoalTimers';
+import { useSmartReverseMode } from '@/shared/hooks/useSmartReverseMode';
 import { useClick, useCorrect, useError } from '@/shared/hooks/useAudio';
 import {
   Timer,
@@ -40,19 +41,31 @@ export interface TimedChallengeConfig<T> {
   generateQuestion: (items: T[]) => T;
 
   // Display
-  renderQuestion: (question: T) => React.ReactNode;
-  getAudioText: (question: T) => string;
+  renderQuestion: (question: T, isReverse?: boolean) => React.ReactNode;
+  getAudioText: (question: T, isReverse?: boolean) => string;
   inputPlaceholder: string;
   modeDescription: string;
 
   // Validation (for Type mode)
-  checkAnswer: (question: T, answer: string) => boolean;
-  getCorrectAnswer: (question: T) => string;
+  checkAnswer: (question: T, answer: string, isReverse?: boolean) => boolean;
+  getCorrectAnswer: (question: T, isReverse?: boolean) => string;
 
   // Pick mode support
-  generateOptions?: (question: T, items: T[], count: number) => string[];
-  renderOption?: (option: string, items: T[]) => React.ReactNode;
-  getCorrectOption?: (question: T) => string;
+  generateOptions?: (
+    question: T,
+    items: T[],
+    count: number,
+    isReverse?: boolean
+  ) => string[];
+  renderOption?: (
+    option: string,
+    items: T[],
+    isReverse?: boolean
+  ) => React.ReactNode;
+  getCorrectOption?: (question: T, isReverse?: boolean) => string;
+
+  // Reverse mode support - if provided, enables smart reverse mode switching
+  supportsReverseMode?: boolean;
 
   // Stats
   stats: {
@@ -91,8 +104,16 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
     generateOptions,
     renderOption,
     getCorrectOption,
+    supportsReverseMode,
     stats
   } = config;
+
+  // Smart reverse mode - uses weighted probability that increases as user improves
+  const {
+    isReverse,
+    decideNextMode,
+    recordWrongAnswer: resetReverseStreak
+  } = useSmartReverseMode();
 
   // Game mode state - load from localStorage (default to Pick)
   const [gameMode, setGameMode] = useState<BlitzGameMode>(() => {
@@ -176,17 +197,25 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
+  // Determine if reverse mode is active for this question
+  const isReverseActive = supportsReverseMode && isReverse;
+
   // Generate shuffled options when question changes (Pick mode)
   useEffect(() => {
     if (currentQuestion && gameMode === 'Pick' && generateOptionsRef.current) {
-      const options = generateOptionsRef.current(currentQuestion, items, 3);
+      const options = generateOptionsRef.current(
+        currentQuestion,
+        items,
+        3,
+        isReverseActive
+      );
       // Shuffle options
       const shuffled = [...options].sort(() => Math.random() - 0.5);
       setShuffledOptions(shuffled);
       setWrongSelectedAnswers([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestion, gameMode]);
+  }, [currentQuestion, gameMode, isReverseActive]);
 
   useEffect(() => {
     if (timeLeft === 0 && !isFinished) {
@@ -261,12 +290,20 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
     if (!currentQuestion || !userAnswer.trim()) return;
     playClick();
 
-    const isCorrect = checkAnswer(currentQuestion, userAnswer.trim());
+    const isCorrect = checkAnswer(
+      currentQuestion,
+      userAnswer.trim(),
+      isReverseActive
+    );
 
     if (isCorrect) {
       playCorrect();
       stats.incrementCorrect();
       setLastAnswerCorrect(true);
+      // Decide next mode based on performance (smart algorithm)
+      if (supportsReverseMode) {
+        decideNextMode();
+      }
       setTimeout(() => {
         setCurrentQuestion(generateQuestionRef.current(items));
         setLastAnswerCorrect(null);
@@ -274,6 +311,10 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
     } else {
       playError();
       stats.incrementWrong();
+      // Reset consecutive streak without changing mode
+      if (supportsReverseMode) {
+        resetReverseStreak();
+      }
       setLastAnswerCorrect(false);
       setTimeout(() => setLastAnswerCorrect(null), 800);
     }
@@ -284,7 +325,7 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
   const handleOptionClick = (selectedOption: string) => {
     if (!currentQuestion || !getCorrectOption) return;
 
-    const correctOption = getCorrectOption(currentQuestion);
+    const correctOption = getCorrectOption(currentQuestion, isReverseActive);
     const isCorrect = selectedOption === correctOption;
 
     if (isCorrect) {
@@ -292,6 +333,10 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
       stats.incrementCorrect();
       setLastAnswerCorrect(true);
       setWrongSelectedAnswers([]);
+      // Decide next mode based on performance (smart algorithm)
+      if (supportsReverseMode) {
+        decideNextMode();
+      }
       setTimeout(() => {
         setCurrentQuestion(generateQuestionRef.current(items));
         setLastAnswerCorrect(null);
@@ -303,6 +348,10 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
       stats.incrementWrong();
       setWrongSelectedAnswers(prev => [...prev, selectedOption]);
       setLastAnswerCorrect(false);
+      // Reset consecutive streak without changing mode
+      if (supportsReverseMode) {
+        resetReverseStreak();
+      }
       // Don't reset lastAnswerCorrect immediately - let user see feedback
     }
   };
@@ -822,17 +871,21 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
           <div className='flex flex-col items-center gap-4'>
             <div
               className={clsx(
-                'text-6xl md:text-8xl font-bold transition-all duration-200',
+                'transition-all duration-200',
+                isReverseActive
+                  ? 'text-4xl md:text-5xl font-medium'
+                  : 'text-6xl md:text-7xl font-semibold',
                 lastAnswerCorrect === true && 'text-green-500',
                 lastAnswerCorrect === false && 'text-red-500',
-                lastAnswerCorrect === null && 'text-[var(--secondary-color)]'
+                lastAnswerCorrect === null && 'text-[var(--main-color)]'
               )}
             >
-              {currentQuestion && renderQuestion(currentQuestion)}
+              {currentQuestion &&
+                renderQuestion(currentQuestion, isReverseActive)}
             </div>
-            {currentQuestion && (
+            {currentQuestion && !isReverseActive && (
               <SSRAudioButton
-                text={getAudioText(currentQuestion)}
+                text={getAudioText(currentQuestion, isReverseActive)}
                 variant='icon-only'
                 size='lg'
                 className='bg-[var(--card-color)] border-[var(--border-color)]'
@@ -854,7 +907,8 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
                   : gameMode === 'Pick'
                   ? '✗ Try again!'
                   : `✗ Incorrect! It was "${getCorrectAnswer(
-                      currentQuestion
+                      currentQuestion,
+                      isReverseActive
                     )}"`}
               </div>
             )}
@@ -906,25 +960,33 @@ export default function TimedChallenge<T>({ config }: TimedChallengeProps<T>) {
                   type='button'
                   disabled={isWrong}
                   className={clsx(
-                    'py-5 pl-8 rounded-xl w-full flex flex-row justify-start items-center gap-1.5',
+                    'py-5 rounded-xl w-full flex flex-row items-center gap-1.5',
+                    isReverseActive
+                      ? 'justify-center text-5xl'
+                      : 'pl-8 justify-start text-2xl md:text-3xl',
                     buttonBorderStyles,
                     'active:scale-95 md:active:scale-98 active:duration-200',
                     'text-[var(--border-color)]',
                     'border-b-4',
-                    'text-2xl md:text-3xl',
                     isWrong &&
                       'hover:bg-[var(--card-color)] border-[var(--border-color)]',
                     !isWrong &&
                       'text-[var(--secondary-color)] border-[var(--secondary-color)]/50 hover:border-[var(--secondary-color)]'
                   )}
                   onClick={() => handleOptionClick(option)}
+                  lang={isReverseActive ? 'ja' : undefined}
                 >
-                  <span className='flex-1 text-left'>
-                    {renderOption ? renderOption(option, items) : option}
+                  <span
+                    className={clsx(isReverseActive ? '' : 'flex-1 text-left')}
+                  >
+                    {renderOption
+                      ? renderOption(option, items, isReverseActive)
+                      : option}
                   </span>
                   <span
                     className={clsx(
-                      'hidden lg:inline text-xs rounded-full bg-[var(--border-color)] px-1 mr-4',
+                      'hidden lg:inline text-xs rounded-full bg-[var(--border-color)] px-1',
+                      isReverseActive ? '' : 'mr-4',
                       isWrong
                         ? 'text-[var(--border-color)]'
                         : 'text-[var(--secondary-color)]'

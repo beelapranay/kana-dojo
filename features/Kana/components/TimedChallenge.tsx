@@ -43,15 +43,36 @@ export default function TimedChallengeKana() {
     items: selectedKana,
     selectedSets: selectedKanaGroups,
     generateQuestion: items => generateKanaQuestion(items),
-    renderQuestion: question => question.kana,
-    getAudioText: question => question.kana,
+    // Reverse mode: show romaji, answer is kana
+    // Normal mode: show kana, answer is romaji
+    renderQuestion: (question, isReverse) =>
+      isReverse ? question.romaji : question.kana,
+    getAudioText: (question, isReverse) => (isReverse ? '' : question.kana),
     inputPlaceholder: 'Type the romaji...',
     modeDescription: 'Mode: Type (See kana → Type romaji)',
-    checkAnswer: (question, answer) =>
-      answer.toLowerCase() === question.romaji.toLowerCase(),
-    getCorrectAnswer: question => question.romaji,
-    // Pick mode support
-    generateOptions: (question, items, count) => {
+    checkAnswer: (question, answer, isReverse) => {
+      if (isReverse) {
+        // Reverse: answer should be the kana character
+        return answer.trim() === question.kana;
+      }
+      // Normal: answer should match romaji
+      return answer.toLowerCase() === question.romaji.toLowerCase();
+    },
+    getCorrectAnswer: (question, isReverse) =>
+      isReverse ? question.kana : question.romaji,
+    // Pick mode support with reverse mode
+    generateOptions: (question, items, count, isReverse) => {
+      if (isReverse) {
+        // Reverse: options are kana characters
+        const correctAnswer = question.kana;
+        const incorrectOptions = items
+          .filter(item => item.kana !== correctAnswer)
+          .sort(() => Math.random() - 0.5)
+          .slice(0, count - 1)
+          .map(item => item.kana);
+        return [correctAnswer, ...incorrectOptions];
+      }
+      // Normal: options are romaji
       const correctAnswer = question.romaji;
       const incorrectOptions = items
         .filter(item => item.romaji !== correctAnswer)
@@ -60,7 +81,9 @@ export default function TimedChallengeKana() {
         .map(item => item.romaji);
       return [correctAnswer, ...incorrectOptions];
     },
-    getCorrectOption: question => question.romaji,
+    getCorrectOption: (question, isReverse) =>
+      isReverse ? question.kana : question.romaji,
+    supportsReverseMode: true,
     stats: {
       correct: timedCorrectAnswers,
       wrong: timedWrongAnswers,
