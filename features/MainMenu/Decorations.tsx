@@ -304,22 +304,34 @@ interface StaticCharProps {
 }
 
 const StaticChar = memo(({ style, isAnimating = false }: StaticCharProps) => {
-  // Use a ref and state to handle smooth fade-out when animation stops
-  const [localOpacity, setLocalOpacity] = useState<number | undefined>(undefined);
+  // Track fade-out state to ensure smooth transition when animation stops
+  const [fadeOpacity, setFadeOpacity] = useState<number | null>(null);
   const prevAnimating = useRef(isAnimating);
 
   useEffect(() => {
-    // When switching from animating to not animating
+    // When animation stops, we need to smoothly fade from potentially dim (0.3) to bright (1.0)
     if (prevAnimating.current && !isAnimating) {
-      // Force opacity to 1 with transition
-      setLocalOpacity(1);
-      const timer = setTimeout(() => {
-        setLocalOpacity(undefined);
-      }, ANIMATION_CONFIG.transitionDuration);
-      return () => clearTimeout(timer);
+      // Step 1: Set to minimum opacity (where animation might be)
+      setFadeOpacity(ANIMATION_CONFIG.minOpacity);
+
+      // Step 2: Use double rAF to ensure browser applies the initial opacity before transitioning
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Step 3: Transition to full opacity
+          setFadeOpacity(1);
+
+          // Step 4: Clean up after transition completes
+          setTimeout(() => {
+            setFadeOpacity(null);
+          }, ANIMATION_CONFIG.transitionDuration);
+        });
+      });
     }
     prevAnimating.current = isAnimating;
   }, [isAnimating]);
+
+  // Only animate when isAnimating is true AND we're not in fade-out mode
+  const shouldAnimate = isAnimating && fadeOpacity === null;
 
   return (
     <span
@@ -332,14 +344,13 @@ const StaticChar = memo(({ style, isAnimating = false }: StaticCharProps) => {
         color: style.color,
         contentVisibility: 'auto',
         containIntrinsicSize: '36px',
-        // Smooth transition when animation starts/stops
-        transition: localOpacity !== undefined
-          ? `opacity ${ANIMATION_CONFIG.transitionDuration}ms ease-in-out`
-          : undefined,
-        // Set explicit opacity when fading back
-        ...(localOpacity !== undefined && { opacity: localOpacity }),
-        // Custom breathe animation - peaceful, zen-like pulsing
-        ...(isAnimating && localOpacity === undefined && {
+        // Apply fade transition when in fade-out mode
+        ...(fadeOpacity !== null && {
+          opacity: fadeOpacity,
+          transition: `opacity ${ANIMATION_CONFIG.transitionDuration}ms ease-in-out`
+        }),
+        // Apply breathe animation only when not fading
+        ...(shouldAnimate && {
           animation: `breathe ${ANIMATION_CONFIG.pulseDuration}ms ease-in-out infinite`
         })
       }}

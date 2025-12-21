@@ -452,10 +452,10 @@ const LevelSetCards = <TLevel extends string, TItem>({
                           'text-2xl flex justify-center items-center gap-2 group',
                           'rounded-2xl  hover:cursor-pointer',
                           'duration-250 transition-all ease-in-out',
-                          'px-2 py-3 max-md:mx-4 border-b-6',
+                          'px-2 py-3 max-md:mx-4 border-b-8',
                           isSelected
                             ? 'bg-[var(--secondary-color)] text-[var(--background-color)] border-[var(--secondary-color-accent)]'
-                            : 'bg-[var(--background-color)] border-[var(--border-color)] hover:border-[var(--main-color)]/80'
+                            : 'bg-[var(--background-color)] border-[var(--border-color)] hover:border-[var(--main-color)]/70'
                         )}
                         onClick={e => {
                           e.currentTarget.blur();
