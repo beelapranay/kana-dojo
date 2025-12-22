@@ -349,6 +349,57 @@ const Canvas = () => {
     setCurrentPoints(prev => [...prev, point]);
   };
 
+  const isPointNearPath = (
+    ctx: CanvasRenderingContext2D,
+    path: Path2D,
+    x: number,
+    y: number,
+    tolerance = 12
+  ) => {
+    ctx.lineWidth = tolerance * 2;
+    return ctx.isPointInStroke(path, x, y);
+  };
+
+  const validateStrokePath = (points: Point[]): boolean => {
+    if (!currentGuideStroke || points.length < 5) return false;
+
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return false;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+
+    const rect = container.getBoundingClientRect();
+    const scaleX = rect.width / 400;
+    const scaleY = rect.height / 350;
+
+    // start point check
+    const sx = currentGuideStroke.startX * scaleX;
+    const sy = currentGuideStroke.startY * scaleY;
+    const fp = points[0];
+
+    if (Math.hypot(fp.x - sx, fp.y - sy) > 18) return false;
+
+    const path = new Path2D(currentGuideStroke.pathData);
+
+    ctx.save();
+    ctx.scale(scaleX, scaleY);
+
+    for (let i = 0; i < points.length; i += 2) {
+      const px = points[i].x / scaleX;
+      const py = points[i].y / scaleY;
+
+      if (!isPointNearPath(ctx, path, px, py, 10)) {
+        ctx.restore();
+        return false;
+      }
+    }
+
+    ctx.restore();
+    return true;
+  };
+
   // Handle pointer up
   const handlePointerUp = () => {
     if (!isDrawing) return;
@@ -357,7 +408,9 @@ const Canvas = () => {
     if (currentPoints.length > 2) {
       // Validate the stroke
       const isValid =
-        currentStage === 'stroke' ? validateStroke(currentPoints) : true;
+        currentStage === 'stroke'
+          ? validateStroke(currentPoints)
+          : currentPoints.length > 20;
 
       if (isValid) {
         // Add to completed strokes
@@ -370,7 +423,8 @@ const Canvas = () => {
             // All strokes complete - show celebration
             setTimeout(() => {
               setShowCelebration(true);
-            }, 300);
+              setCurrentStage('full');
+            }, 1200);
           } else {
             // Move to next stroke
             incrementStroke();
