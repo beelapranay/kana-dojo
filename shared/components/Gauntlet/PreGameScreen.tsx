@@ -47,6 +47,26 @@ const difficultyIcons: Record<GauntletDifficulty, React.ReactNode> = {
   'instant-death': <Skull size={24} />,
 };
 
+const GAME_MODES: Array<{
+  id: GauntletGameMode;
+  title: string;
+  description: string;
+  icon: typeof MousePointerClick;
+}> = [
+  {
+    id: 'Pick',
+    title: 'Pick',
+    description: 'Pick the correct answer from multiple options',
+    icon: MousePointerClick,
+  },
+  {
+    id: 'Type',
+    title: 'Type',
+    description: 'Type the correct answer',
+    icon: Keyboard,
+  },
+];
+
 export default function PreGameScreen({
   dojoType,
   dojoLabel,
@@ -90,23 +110,7 @@ export default function PreGameScreen({
     [selectedSets],
   );
 
-  const gameModes = useMemo(
-    () => [
-      {
-        id: 'Pick' as GauntletGameMode,
-        title: 'Pick',
-        description: 'Pick the correct answer from multiple options',
-        icon: MousePointerClick,
-      },
-      {
-        id: 'Type' as GauntletGameMode,
-        title: 'Type',
-        description: 'Type the correct answer',
-        icon: Keyboard,
-      },
-    ],
-    [],
-  );
+  const gameModes = useMemo(() => GAME_MODES, []);
 
   const handleDifficultyClick = useCallback(
     (diff: GauntletDifficulty) => {

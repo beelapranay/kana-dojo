@@ -187,6 +187,11 @@ function SelectedLevelsCard({
   itemsCount: number;
   selectedSets?: string[];
 }) {
+  const emptyLabel = useMemo(
+    () => `${itemsCount} ${dojoLabel.toLowerCase()}`,
+    [dojoLabel, itemsCount],
+  );
+
   const sortedSets = useMemo(() => {
     if (!selectedSets || selectedSets.length === 0) return [];
     return [...selectedSets].sort((a, b) => {
@@ -198,7 +203,7 @@ function SelectedLevelsCard({
 
   const compactText = useMemo(() => {
     if (sortedSets.length === 0) {
-      return `${itemsCount} ${dojoLabel.toLowerCase()}`;
+      return emptyLabel;
     }
     return sortedSets
       .map(set =>
@@ -208,11 +213,11 @@ function SelectedLevelsCard({
           .replace(/-group.*$/, ''),
       )
       .join(', ');
-  }, [dojoLabel, itemsCount, sortedSets]);
+  }, [emptyLabel, sortedSets]);
 
   const fullText = useMemo(() => {
     if (sortedSets.length === 0) {
-      return `${itemsCount} ${dojoLabel.toLowerCase()}`;
+      return emptyLabel;
     }
     return sortedSets
       .map(set => {
@@ -222,7 +227,7 @@ function SelectedLevelsCard({
           : `${cleaned.includes('-') ? 'Levels' : 'Level'} ${cleaned}`;
       })
       .join(', ');
-  }, [dojoLabel, dojoType, itemsCount, sortedSets]);
+  }, [dojoType, emptyLabel, sortedSets]);
 
   return (
     <div className='rounded-lg bg-(--card-color) p-4 text-left'>

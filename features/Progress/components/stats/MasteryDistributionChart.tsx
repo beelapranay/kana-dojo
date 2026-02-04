@@ -252,6 +252,8 @@ export function getMasteryDistributionDisplayValues(
   const masteredPercent = calculatePercentage(mastered, total);
   const learningPercent = calculatePercentage(learning, total);
   const needsPracticePercent = calculatePercentage(needsPractice, total);
+  const percentageSum =
+    masteredPercent + learningPercent + needsPracticePercent;
 
   return {
     mastered,
@@ -261,6 +263,6 @@ export function getMasteryDistributionDisplayValues(
     masteredPercent: `${masteredPercent.toFixed(1)}%`,
     learningPercent: `${learningPercent.toFixed(1)}%`,
     needsPracticePercent: `${needsPracticePercent.toFixed(1)}%`,
-    percentageSum: masteredPercent + learningPercent + needsPracticePercent,
+    percentageSum,
   };
 }
