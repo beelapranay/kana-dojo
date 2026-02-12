@@ -136,13 +136,6 @@ const baseThemeSets: BaseThemeGroup[] = [
     isLight: false,
     themes: [
       {
-        id: 'big-beautiful-theme',
-        displayName: 'big, beautiful theme',
-        backgroundColor: 'oklch(14.0% 0.048 262.0 / 1)',
-        mainColor: 'oklch(86.0% 0.145 85.0 / 1)',
-        secondaryColor: 'oklch(69.0% 0.225 28.0 / 1)',
-      },
-      {
         id: 'soba-slate',
         backgroundColor: 'oklch(18.0% 0.015 250.0 / 1)',
         mainColor: 'oklch(68.0% 0.085 60.0 / 1)',
@@ -257,6 +250,13 @@ const baseThemeSets: BaseThemeGroup[] = [
         backgroundColor: 'oklch(17.0% 0.035 280.0 / 1)',
         mainColor: 'oklch(68.0% 0.175 30.0 / 1)',
         secondaryColor: 'oklch(78.0% 0.125 45.0 / 1)',
+      },
+      {
+        id: 'big-beautiful-theme',
+        displayName: 'big, beautiful theme',
+        backgroundColor: 'oklch(14.0% 0.048 262.0 / 1)',
+        mainColor: 'oklch(86.0% 0.145 85.0 / 1)',
+        secondaryColor: 'oklch(69.0% 0.225 28.0 / 1)',
       },
       {
         id: 'ghost-parade',

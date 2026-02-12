@@ -312,22 +312,22 @@ const Themes = () => {
                       ? 'long loooooooong theme'
                       : currentTheme.displayName
                         ? currentTheme.displayName
-                      : currentTheme.id.split('-').map((themeNamePart, i) => (
-                          <span
-                            key={`${currentTheme.id}-${i}`}
-                            style={{
-                              color:
-                                process.env.NODE_ENV !== 'production'
-                                  ? i === 0
-                                    ? currentTheme.mainColor
-                                    : currentTheme.secondaryColor
-                                  : undefined,
-                            }}
-                          >
-                            {i > 0 && ' '}
-                            {themeNamePart}
-                          </span>
-                        ))}
+                        : currentTheme.id.split('-').map((themeNamePart, i) => (
+                            <span
+                              key={`${currentTheme.id}-${i}`}
+                              style={{
+                                color:
+                                  process.env.NODE_ENV !== 'production'
+                                    ? i === 0
+                                      ? currentTheme.mainColor
+                                      : currentTheme.secondaryColor
+                                    : undefined,
+                              }}
+                            >
+                              {i > 0 && ' '}
+                              {themeNamePart}
+                            </span>
+                          ))}
                   </span>
                 )}
               </label>
